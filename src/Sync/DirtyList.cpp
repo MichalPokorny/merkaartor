@@ -397,14 +397,12 @@ bool DirtyListDescriber::eraseRelation(Relation* R)
 
 
 DirtyListExecutor::DirtyListExecutor(Document* aDoc, const DirtyListBuild& aFuture, const QString& aWeb, const QString& aUser, const QString& aPwd, int aTasks)
-: DirtyListVisit(aDoc, aFuture, false), Tasks(aTasks), Done(0), Web(aWeb), User(aUser), Pwd(aPwd), theDownloader(0)
+: DirtyListVisit(aDoc, aFuture, false), Tasks(aTasks), Done(0), Web(aWeb), User(aUser), Pwd(aPwd), theDownloader(User, Pwd)
 {
-    theDownloader = new Downloader(User, Pwd);
 }
 
 DirtyListExecutor::~DirtyListExecutor()
 {
-    delete theDownloader;
 }
 
 
@@ -416,24 +414,24 @@ bool DirtyListExecutor::sendRequest(const QString& Method, const QString& URL, c
     QMessageBox::StandardButton theChoice = QMessageBox::Retry;
     while (theChoice == QMessageBox::Retry) {
         QUrl theUrl(Web+URL);
-        if (!theDownloader->request(Method,theUrl,Data))
+        if (!theDownloader.request(Method,theUrl,Data))
         {
-            qDebug() << QString("Upload error: request (%1); Server message is '%2'").arg(theDownloader->resultCode()).arg(theDownloader->resultText());
-            if (theDownloader->resultCode() == 401) {
+            qDebug() << QString("Upload error: request (%1); Server message is '%2'").arg(theDownloader.resultCode()).arg(theDownloader.resultText());
+            if (theDownloader.resultCode() == 401) {
                 QMessageBox::warning(Progress,tr("Error uploading request"),
                     tr("Please check your username and password in the Preferences menu"));
                 theChoice = QMessageBox::Abort;
             } else {
-                QString msg = tr("There was an error uploading this request (%1)\nServer message is '%2'").arg(theDownloader->resultCode()).arg(theDownloader->resultText());
-                if (!theDownloader->errorText().isEmpty())
-                    msg += tr("\nAPI message is '%1'").arg(theDownloader->errorText());
+                QString msg = tr("There was an error uploading this request (%1)\nServer message is '%2'").arg(theDownloader.resultCode()).arg(theDownloader.resultText());
+                if (!theDownloader.errorText().isEmpty())
+                    msg += tr("\nAPI message is '%1'").arg(theDownloader.errorText());
                 theChoice = QMessageBox::warning(Progress,tr("Error uploading request"), msg, QMessageBox::Abort | QMessageBox::Retry | QMessageBox::Ignore);
                 continue;
             }
         }
 
-        QByteArray Content = theDownloader->content();
-        int x = theDownloader->resultCode();
+        QByteArray Content = theDownloader.content();
+        int x = theDownloader.resultCode();
 
         if (x==200)
         {
@@ -442,9 +440,9 @@ bool DirtyListExecutor::sendRequest(const QString& Method, const QString& URL, c
         }
         else
         {
-            qDebug() << QString("Upload error: request (%1); Server message is '%2'").arg(theDownloader->resultCode()).arg(theDownloader->resultText());
+            qDebug() << QString("Upload error: request (%1); Server message is '%2'").arg(theDownloader.resultCode()).arg(theDownloader.resultText());
             theChoice = QMessageBox::warning(Progress,tr("Error uploading request"),
-                            tr("There was an error uploading this request (%1)\nServer message is '%2'").arg(x).arg(theDownloader->resultText()),
+                            tr("There was an error uploading this request (%1)\nServer message is '%2'").arg(x).arg(theDownloader.resultText()),
                             QMessageBox::Abort | QMessageBox::Retry | QMessageBox::Ignore);
             continue;
         }
@@ -499,7 +497,7 @@ bool DirtyListExecutor::start()
         "</osm>");
     DataIn = DataIn.arg(STRINGIFY(VERSION)).arg(QLocale::system().name().split("_")[0]).arg(Utils::encodeAttributes(glbChangeSetComment));
     QString DataOut;
-    QString URL = theDownloader->getURLToOpenChangeSet();
+    QString URL = theDownloader.getURLToOpenChangeSet();
     if (sendRequest("PUT",URL,DataIn, DataOut))
     {
         ChangeSetId = DataOut;
@@ -517,7 +515,7 @@ bool DirtyListExecutor::stop()
     Progress->setLabelText(tr("CLOSE changeset"));
     QEventLoop L; L.processEvents(QEventLoop::ExcludeUserInputEvents);
 
-    QString URL = theDownloader->getURLToCloseChangeSet(ChangeSetId);
+    QString URL = theDownloader.getURLToCloseChangeSet(ChangeSetId);
     QString DataIn, DataOut;
     if (sendRequest("PUT",URL,DataIn,DataOut))
     {
@@ -543,7 +541,7 @@ bool DirtyListExecutor::addRelation(Relation *R)
     R->setId(IFeature::FId(IFeature::OsmRelation, 0));
     DataIn = wrapOSM(exportOSM(*R, ChangeSetId), ChangeSetId);
     R->setId(OldId);
-    QString URL=theDownloader->getURLToCreate("relation");
+    QString URL=theDownloader.getURLToCreate("relation");
     if (sendRequest("PUT",URL,DataIn,DataOut))
     {
         // chop off extra spaces, newlines etc
@@ -576,7 +574,7 @@ bool DirtyListExecutor::addRoad(Way *R)
     R->setId(IFeature::FId(IFeature::LineString, 0));
     DataIn = wrapOSM(exportOSM(*R, ChangeSetId), ChangeSetId);
     R->setId(OldId);
-    QString URL=theDownloader->getURLToCreate("way");
+    QString URL=theDownloader.getURLToCreate("way");
     if (sendRequest("PUT",URL,DataIn,DataOut))
     {
         // chop off extra spaces, newlines etc
@@ -610,7 +608,7 @@ bool DirtyListExecutor::addPoint(Node* Pt)
     Pt->setId(IFeature::FId(IFeature::Point, 0));
     DataIn = wrapOSM(exportOSM(*Pt, ChangeSetId), ChangeSetId);
     Pt->setId(OldId);
-    QString URL=theDownloader->getURLToCreate("node");
+    QString URL=theDownloader.getURLToCreate("node");
     if (sendRequest("PUT",URL,DataIn,DataOut))
     {
         // chop off extra spaces, newlines etc
@@ -638,7 +636,7 @@ bool DirtyListExecutor::updateRelation(Relation* R)
 
     Progress->setLabelText(tr("UPDATE relation %1").arg(R->id().numId) + userName(R));
     QEventLoop L; L.processEvents(QEventLoop::ExcludeUserInputEvents);
-    QString URL = theDownloader->getURLToUpdate("relation",stripToOSMId(R->id()));
+    QString URL = theDownloader.getURLToUpdate("relation",stripToOSMId(R->id()));
     QString DataIn, DataOut;
     DataIn = wrapOSM(exportOSM(*R, ChangeSetId), ChangeSetId);
     if (sendRequest("PUT",URL,DataIn,DataOut))
@@ -669,7 +667,7 @@ bool DirtyListExecutor::updateRoad(Way* R)
 
     Progress->setLabelText(tr("UPDATE road %1").arg(R->id().numId) + userName(R));
     QEventLoop L; L.processEvents(QEventLoop::ExcludeUserInputEvents);
-    QString URL = theDownloader->getURLToUpdate("way",stripToOSMId(R->id()));
+    QString URL = theDownloader.getURLToUpdate("way",stripToOSMId(R->id()));
     QString DataIn, DataOut;
     DataIn = wrapOSM(exportOSM(*R, ChangeSetId), ChangeSetId);
     if (sendRequest("PUT",URL,DataIn,DataOut))
@@ -702,7 +700,7 @@ bool DirtyListExecutor::updatePoint(Node* Pt)
     QEventLoop L; L.processEvents(QEventLoop::ExcludeUserInputEvents);
 //	QString URL("/api/0.3/node/%1");
 //	URL = URL.arg(stripToOSMId(Pt->id()));
-    QString URL = theDownloader->getURLToUpdate("node",stripToOSMId(Pt->id()));
+    QString URL = theDownloader.getURLToUpdate("node",stripToOSMId(Pt->id()));
     QString DataIn, DataOut;
     DataIn = wrapOSM(exportOSM(*Pt, ChangeSetId), ChangeSetId);
     if (sendRequest("PUT",URL,DataIn,DataOut))
@@ -735,7 +733,7 @@ bool DirtyListExecutor::erasePoint(Node *Pt)
     QEventLoop L; L.processEvents(QEventLoop::ExcludeUserInputEvents);
 //	QString URL("/api/0.3/node/%1");
 //	URL = URL.arg(stripToOSMId(Pt->id()));
-    QString URL = theDownloader->getURLToDelete("node",stripToOSMId(Pt->id()));
+    QString URL = theDownloader.getURLToDelete("node",stripToOSMId(Pt->id()));
     QString DataIn, DataOut;
     DataIn = wrapOSM(exportOSM(*Pt, ChangeSetId), ChangeSetId);
     if (sendRequest("DELETE",URL,DataIn,DataOut))
@@ -762,7 +760,7 @@ bool DirtyListExecutor::eraseRoad(Way *R)
     QEventLoop L; L.processEvents(QEventLoop::ExcludeUserInputEvents);
 //	QString URL("/api/0.3/way/%1");
 //	URL = URL.arg(stripToOSMId(R->id()));
-    QString URL = theDownloader->getURLToDelete("way",stripToOSMId(R->id()));
+    QString URL = theDownloader.getURLToDelete("way",stripToOSMId(R->id()));
     QString DataIn, DataOut;
     DataIn = wrapOSM(exportOSM(*R, ChangeSetId), ChangeSetId);
     if (sendRequest("DELETE",URL,DataIn,DataOut))

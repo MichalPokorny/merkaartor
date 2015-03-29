@@ -147,7 +147,7 @@ class DirtyListExecutor : public QObject, public DirtyListVisit
         int Tasks, Done;
         QProgressDialog* Progress;
         QString Web,User,Pwd;
-        Downloader* theDownloader;
+        Downloader theDownloader;
         QString ChangeSetId;
 };
 
