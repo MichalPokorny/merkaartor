@@ -211,10 +211,6 @@ MainWindow::MainWindow(QWidget *parent)
     p->FILTER_IMPORT_SUPPORTED += supported_import_formats_desc;
     p->FILTER_IMPORT_SUPPORTED += tr("All Files (*)");
 
-    theProgressDialog = NULL;
-    theProgressBar = NULL;
-    theProgressLabel = NULL;
-
     if (M_PREFS->getMerkaartorStyle())
         QApplication::setStyle(QStyleFactory::create(M_PREFS->getMerkaartorStyleString()));
 
@@ -1150,30 +1146,6 @@ void MainWindow::on_toolsToolbarsAction_triggered()
     Sets->setValue("MainWindow/Toolbars", toolBarManager->saveState());
 }
 
-void MainWindow::createProgressDialog()
-{
-    theProgressDialog = new QProgressDialog(this);
-    theProgressDialog->setWindowModality(Qt::ApplicationModal);
-    theProgressDialog->setMinimumDuration(0);
-
-    theProgressBar = new QProgressBar(theProgressDialog);
-    theProgressBar->setTextVisible(false);
-    theProgressDialog->setBar(theProgressBar);
-
-    theProgressLabel = new QLabel();
-    theProgressLabel->setAlignment(Qt::AlignCenter);
-    theProgressDialog->setLabel(theProgressLabel);
-
-    theProgressDialog->setMaximum(11);
-}
-
-void MainWindow::deleteProgressDialog()
-{
-    SAFE_DELETE(theProgressDialog)
-    theProgressBar = NULL;
-    theProgressLabel = NULL;
-}
-
 void MainWindow::setAreaOpacity(QAction *act)
 {
     qreal a = act->data().toDouble();
@@ -1632,7 +1604,6 @@ static bool mayDiscardStyleChanges(QWidget* aWidget)
 
 bool MainWindow::importFiles(Document * mapDocument, const QStringList & fileNames, QStringList * importedFileNames )
 {
-    createProgressDialog();
 #ifndef Q_OS_SYMBIAN
     QApplication::setOverrideCursor(Qt::BusyCursor);
 #endif
@@ -1781,8 +1752,6 @@ bool MainWindow::importFiles(Document * mapDocument, const QStringList & fileNam
 #ifndef Q_OS_SYMBIAN
     QApplication::restoreOverrideCursor();
 #endif
-    deleteProgressDialog();
-
     return foundImport;
 }
 
@@ -1909,9 +1878,7 @@ void MainWindow::loadUrl(const QUrl& u)
         Feature* F = theDocument->getFeature(mId);
         if (!F) {
             /* The feature is missing, download it first. */
-            createProgressDialog();
             downloadFeature(this, mId, theDocument, NULL);
-            deleteProgressDialog();
             F = theDocument->getFeature(mId);
         }
         /* The feature is on our map, just select it. */
@@ -2013,14 +1980,10 @@ void MainWindow::warnMapDownloadFailed() {
 
 void MainWindow::on_fileDownloadAction_triggered()
 {
-    createProgressDialog();
-
     if (downloadOSM(this, theView->viewport(), theDocument)) {
         on_editPropertiesAction_triggered();
     } else
         warnMapDownloadFailed();
-
-    deleteProgressDialog();
 
     updateBookmarksMenu();
 
@@ -2029,13 +1992,9 @@ void MainWindow::on_fileDownloadAction_triggered()
 
 void MainWindow::on_fileDownloadMoreAction_triggered()
 {
-    createProgressDialog();
-
     if (!downloadMoreOSM(this, theView->viewport(), theDocument)) {
         warnMapDownloadFailed();
     }
-
-    deleteProgressDialog();
 
     emit content_changed();
 }
@@ -2053,13 +2012,9 @@ void MainWindow::on_layersOpenstreetbugsAction_triggered()
         }
     }
 
-    createProgressDialog();
-
     if (!::downloadOpenstreetbugs(this, theView->viewport(), theDocument, sl)) {
         QMessageBox::warning(this, tr("Error downloading OpenStreetBugs"), tr("The OpenStreetBugs could not be downloaded"));
     }
-
-    deleteProgressDialog();
 }
 
 void MainWindow::on_layersMapdustAction_triggered()
@@ -2075,27 +2030,18 @@ void MainWindow::on_layersMapdustAction_triggered()
         }
     }
 
-    createProgressDialog();
-
     if (!::downloadMapdust(this, theView->viewport(), theDocument, sl)) {
         QMessageBox::warning(this, tr("Error downloading MapDust"), tr("The MapDust bugs could not be downloaded"));
     }
-
-    deleteProgressDialog();
 }
 
 void MainWindow::downloadFeatures(const QList<Feature*>& aDownloadList)
 {
-    createProgressDialog();
-
     if (!::downloadFeatures(this, aDownloadList, theDocument)) {
         QMessageBox::warning(this, tr("Error downloading"), tr("The map could not be downloaded"));
     }
 
-    deleteProgressDialog();
-
     emit content_changed();
-
 }
 
 void MainWindow::on_fileWorkOfflineAction_triggered()
@@ -3391,7 +3337,6 @@ void MainWindow::on_exportOSMAction_triggered()
 {
     QList<Feature*> theFeatures;
 
-    createProgressDialog();
     if (!selectExportedFeatures(theFeatures))
         return;
 
@@ -3416,9 +3361,7 @@ void MainWindow::on_exportOSMAction_triggered()
 
         theDocument->exportOSM(this, &file, theFeatures);
         file.close();
-
     }
-    deleteProgressDialog();
 }
 
 void MainWindow::on_exportOSCAction_triggered()
@@ -3459,7 +3402,6 @@ void MainWindow::on_exportGPXAction_triggered()
 {
     QList<Feature*> theFeatures;
 
-    createProgressDialog();
     if (!selectExportedFeatures(theFeatures))
         return;
 
@@ -3490,14 +3432,12 @@ void MainWindow::on_exportGPXAction_triggered()
         QApplication::restoreOverrideCursor();
 #endif
     }
-    deleteProgressDialog();
 }
 
 void MainWindow::on_exportGDALAction_triggered()
 {
     QList<Feature*> theFeatures;
 
-    createProgressDialog();
     if (!selectExportedFeatures(theFeatures))
         return;
 #ifndef Q_OS_SYMBIAN
@@ -3510,15 +3450,12 @@ void MainWindow::on_exportGDALAction_triggered()
 #ifndef Q_OS_SYMBIAN
     QApplication::restoreOverrideCursor();
 #endif
-
-    deleteProgressDialog();
 }
 
 void MainWindow::on_exportKMLAction_triggered()
 {
     QList<Feature*> theFeatures;
 
-    createProgressDialog();
     if (!selectExportedFeatures(theFeatures))
         return;
 
@@ -3549,7 +3486,6 @@ void MainWindow::on_exportKMLAction_triggered()
         QApplication::restoreOverrideCursor();
 #endif
     }
-    deleteProgressDialog();
 }
 
 bool MainWindow::selectExportedFeatures(QList<Feature*>& theFeatures)

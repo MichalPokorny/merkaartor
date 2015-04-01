@@ -130,10 +130,8 @@ QByteArray DirtyListExecutorOSC::getChanges()
 bool DirtyListExecutorOSC::executeChanges(QWidget* aParent)
 {
     bool ok = true;
-
 #ifndef _MOBILE
     MainWindow* main = dynamic_cast<MainWindow*>(aParent);
-    main->createProgressDialog();
 
     Progress = main->getProgressDialog();
     if (Progress) {
@@ -169,9 +167,7 @@ bool DirtyListExecutorOSC::executeChanges(QWidget* aParent)
             ok = stop();
         }
     }
-    main->deleteProgressDialog();
 #endif
-
     return ok;
 }
 

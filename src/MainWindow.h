@@ -267,9 +267,6 @@ public:
     void saveTemplateDocument(const QString& fn);
     void downloadFeatures(const QList<Feature*>& aDownloadList);
 
-    void createProgressDialog();
-    void deleteProgressDialog();
-
     void createToolBarManager();
 
     void updateLanguage();
