@@ -66,6 +66,7 @@ private slots:
     void saveImage(void);
 
 private:
+    bool selectLayer(Layer*& theLayer);
 
     MainWindow *Main;
     QAction *centerAction;

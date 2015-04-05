@@ -302,68 +302,62 @@ void GeoImageDock::addUsedTrackpoint(NodeData data)
     usedTrackPoints << data;
 }
 
-void GeoImageDock::loadImage(QString file, Coord pos)
-{
-    Document *theDocument = Main->document();
-    //MapView *theView = Main->view();
-
-    Layer *theLayer;
+bool GeoImageDock::selectLayer(Layer*& theLayer) {
     if (photoLayer == NULL) {
         photoLayer = new TrackLayer(tr("Photo layer"));
         photoLayer->setReadonly(false);
         theDocument->add(photoLayer);
     }
 
-    { // retrieve the target layer from the user
-        QStringList layers;
-        QList<int> layerId;
-        int i;
-        Layer *layer;
-        Layer *singleLayer = NULL;
-        Layer *singleTrackLayer = NULL;
-        int trackLayersCount = 0;
-        for (i=0;i<theDocument->layerSize();i++) {
-            layer = theDocument->getLayer(i);
-            if (!layer->isEnabled())
-                continue;
-            if (layer->classType() == Layer::TrackLayerType) {
-                trackLayersCount++;
-                if (!singleTrackLayer)
-                    singleTrackLayer = layer;
-            }
-            if (layer->classType() == Layer::TrackLayerType || layer->classType() == Layer::DrawingLayerType) {
-                if (!singleLayer)
-                    singleLayer = layer;
-                layers.append(theDocument->getLayer(i)->name());
-                layerId.append(i);
-            }
+    // retrieve the target layer from the user
+    QStringList layers;
+    QList<int> layerId;
+    int i;
+    Layer *layer;
+    Layer *singleLayer = NULL;
+    Layer *singleTrackLayer = NULL;
+    int trackLayersCount = 0;
+    for (i=0;i<theDocument->layerSize();i++) {
+        layer = theDocument->getLayer(i);
+        if (!layer->isEnabled())
+            continue;
+        if (layer->classType() == Layer::TrackLayerType) {
+            trackLayersCount++;
+            if (!singleTrackLayer)
+                singleTrackLayer = layer;
         }
+        if (layer->classType() == Layer::TrackLayerType || layer->classType() == Layer::DrawingLayerType) {
+            if (!singleLayer)
+                singleLayer = layer;
+            layers.append(theDocument->getLayer(i)->name());
+            layerId.append(i);
+        }
+    }
 
-        // Select single layer if there is only one
-        if (layers.size() == 1)
-        {
-            theLayer = singleLayer;
-        }
-        // Select single track layer if there is only one
-        else if (trackLayersCount == 1)
-        {
-            theLayer = singleTrackLayer;
-        }
-        // Now ask the user what layer to add the photos to
+    // Select single layer if there is only one
+    if (layers.size() == 1)
+    {
+        theLayer = singleLayer;
+    }
+    // Select single track layer if there is only one
+    else if (trackLayersCount == 1)
+    {
+        theLayer = singleTrackLayer;
+    }
+    // Now ask the user what layer to add the photos to
+    else
+    {
+        bool ok;
+        QString name = QInputDialog::getItem(NULL, tr("Load geotagged Images"),
+         tr("Select the layer to which the images belong:"), layers, 0, false, &ok);
+        if (ok && !name.isEmpty())
+            theLayer = theDocument->getLayer(layerId.at(layers.indexOf(name)));
         else
-        {
-            bool ok;
-            QString name = QInputDialog::getItem(NULL, tr("Load geotagged Images"),
-             tr("Select the layer to which the images belong:"), layers, 0, false, &ok);
-            if (ok && !name.isEmpty())
-                theLayer = theDocument->getLayer(layerId.at(layers.indexOf(name)));
-            else
-                return;
-        }
-        if (theLayer != photoLayer && !photoLayer->size()) {
-            theDocument->remove(photoLayer);
-            SAFE_DELETE(photoLayer);
-        }
+            return false;
+    }
+    if (theLayer != photoLayer && !photoLayer->size()) {
+        theDocument->remove(photoLayer);
+        SAFE_DELETE(photoLayer);
     }
 
     if (theLayer->isReadonly()) { // nodes from readonly layers can not be selected and therefore associated images can not be displayed
@@ -372,7 +366,19 @@ void GeoImageDock::loadImage(QString file, Coord pos)
          QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Yes) == QMessageBox::Yes)
             theLayer->getWidget()->setLayerReadonly(false); // this makes/updates both the widget and the layer with readonly = false
         else
-            return;
+            return false;
+    }
+    return true;
+}
+
+void GeoImageDock::loadImage(QString file, Coord pos)
+{
+    Document *theDocument = Main->document();
+    //MapView *theView = Main->view();
+
+    Layer* theLayer;
+    if (!selectLayer(theLayer)) {
+        return;
     }
 
     Node *Pt = 0;
@@ -433,72 +439,9 @@ void GeoImageDock::loadImages(QStringList fileNames)
     Exiv2::ExifData exifData;
     bool positionValid = FALSE;
 
-    Layer *theLayer;
-    if (photoLayer == NULL) {
-        photoLayer = new TrackLayer(tr("Photo layer"));
-        photoLayer->setReadonly(false);
-        theDocument->add(photoLayer);
-    }
-
-    { // retrieve the target layer from the user
-        QStringList layers;
-        QList<int> layerId;
-        int i;
-        Layer *layer;
-        Layer *singleLayer = NULL;
-        Layer *singleTrackLayer = NULL;
-        int trackLayersCount = 0;
-        for (i=0;i<theDocument->layerSize();i++) {
-            layer = theDocument->getLayer(i);
-            if (!layer->isEnabled())
-                continue;
-            if (layer->classType() == Layer::TrackLayerType) {
-                trackLayersCount++;
-                if (!singleTrackLayer)
-                    singleTrackLayer = layer;
-            }
-            if (layer->classType() == Layer::TrackLayerType || layer->classType() == Layer::DrawingLayerType) {
-                if (!singleLayer)
-                    singleLayer = layer;
-                layers.append(theDocument->getLayer(i)->name());
-                layerId.append(i);
-            }
-        }
-
-        // Select single layer if there is only one
-        if (layers.size() == 1)
-        {
-            theLayer = singleLayer;
-        }
-        // Select single track layer if there is only one
-        else if (trackLayersCount == 1)
-        {
-            theLayer = singleTrackLayer;
-        }
-        // Now ask the user what layer to add the photos to
-        else
-        {
-            bool ok;
-            QString name = QInputDialog::getItem(NULL, tr("Load geotagged Images"),
-             tr("Select the layer to which the images belong:"), layers, 0, false, &ok);
-            if (ok && !name.isEmpty())
-                theLayer = theDocument->getLayer(layerId.at(layers.indexOf(name)));
-            else
-                return;
-        }
-        if (theLayer != photoLayer && !photoLayer->size()) {
-            theDocument->remove(photoLayer);
-            SAFE_DELETE(photoLayer);
-        }
-    }
-
-    if (theLayer->isReadonly()) { // nodes from readonly layers can not be selected and therefore associated images can not be displayed
-        if (QMessageBox::question(this, tr("Layer is read-only"),
-         tr("The used layer is not writeable. Should it be made writeable?\nIf not, you can't load images that belong to it."),
-         QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Yes) == QMessageBox::Yes)
-            theLayer->getWidget()->setLayerReadonly(false); // this makes/updates both the widget and the layer with readonly = false
-        else
-            return;
+    Layer* theLayer;
+    if (!selectLayer(theLayer)) {
+        return;
     }
 
     QProgressDialog progress(tr("Loading Images ..."), tr("Abort loading"), 0, fileNames.size());
