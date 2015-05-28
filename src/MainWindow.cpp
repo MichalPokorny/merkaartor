@@ -2311,14 +2311,13 @@ void MainWindow::on_viewRelationsAction_triggered()
 
 void MainWindow::on_viewGotoAction_triggered()
 {
-    GotoDialog* Dlg = new GotoDialog(theView, this);
-    if (Dlg->exec() == QDialog::Accepted) {
-        if (!Dlg->newViewport().isNull() && !Dlg->newViewport().isEmpty()) {
-            theView->setViewport(Dlg->newViewport(), theView->rect());
+    GotoDialog dialog(theView, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        if (!dialog.newViewport().isNull() && !dialog.newViewport().isEmpty()) {
+            theView->setViewport(dialog.newViewport(), theView->rect());
             invalidateView();
         }
     }
-    delete Dlg;
 }
 
 void MainWindow::on_viewArrowsNeverAction_triggered(bool checked)
@@ -2688,12 +2687,12 @@ void MainWindow::on_roadSubdivideAction_triggered()
     {
         int divisions = getInteger(this, tr("Number of segments to divide into"), tr("Specify the number of segments"), 2, 99);
 #else
-    QInputDialog *Dlg = new QInputDialog(this);
-    Dlg->setInputMode(QInputDialog::IntInput);
-    Dlg->setIntRange(2, 99);
-    Dlg->setLabelText(tr("Number of segments to divide into"));
-    if (Dlg->exec() == QDialog::Accepted) {
-        int divisions = Dlg->intValue();
+    QInputDialog dialog(this);
+    dialog.setInputMode(QInputDialog::IntInput);
+    dialog.setIntRange(2, 99);
+    dialog.setLabelText(tr("Number of segments to divide into"));
+    if (dialog.exec() == QDialog::Accepted) {
+        int divisions = dialog.intValue();
 #endif
         CommandList* theList = new CommandList(MainWindow::tr("Subdivide road into %1").arg(divisions), NULL);
         subdivideRoad(theDocument, theList, p->theProperties, divisions);
@@ -2704,9 +2703,6 @@ void MainWindow::on_roadSubdivideAction_triggered()
             invalidateView();
         }
     }
-#if QT_VERSION > 0x040499
-    delete Dlg;
-#endif
 }
 
 void MainWindow::on_roadAxisAlignAction_triggered()
@@ -2719,8 +2715,8 @@ void MainWindow::on_roadAxisAlignAction_triggered()
     if (!axes)
         axes = 4;
     axes = getInteger(this, tr("Axis Align"),
-                                    tr("Specify the number of regular axes to align edges on (e.g. 4 for rectangular)"),
-                                    axes, 3, max_axes, 1, &ok);
+                      tr("Specify the number of regular axes to align edges on (e.g. 4 for rectangular)"),
+                      axes, 3, max_axes, 1, &ok);
     if (!ok)
         return;
 
@@ -2896,14 +2892,14 @@ void MainWindow::on_areaSplitAction_triggered()
 
 void MainWindow::on_areaTerraceAction_triggered()
 {
-    TerraceDialog* Dlg = new TerraceDialog(this);
-    if (Dlg->exec() == QDialog::Accepted) {
-        int divisions = Dlg->numHouses();
+    TerraceDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        int divisions = dialog.numHouses();
         CommandList* theList = new CommandList(MainWindow::tr("Terrace area into %1").arg(divisions), NULL);
         terraceArea(theDocument, theList, p->theProperties, divisions);
         // Add the house numbers to the houses in the selection
-        if (Dlg->hasHouseNumbers()) {
-            QStringList numbers = Dlg->houseNumbers();
+        if (dialog.hasHouseNumbers()) {
+            QStringList numbers = dialog.houseNumbers();
             QList<Feature*> areas = p->theProperties->selection();
             int i = 0;
             foreach (Feature* area, areas) {
@@ -2921,7 +2917,6 @@ void MainWindow::on_areaTerraceAction_triggered()
             invalidateView();
         }
     }
-    delete Dlg;
 }
 
 void MainWindow::on_createRelationAction_triggered()
@@ -3061,16 +3056,16 @@ void MainWindow::on_toolsTMSServersAction_triggered()
 
 void MainWindow::on_toolsProjectionsAction_triggered()
 {
-    ProjPreferencesDialog* prefDlg = new ProjPreferencesDialog();
-    if (prefDlg->exec() == QDialog::Accepted) {
+    ProjPreferencesDialog prefDlg;
+    if (prefDlg.exec() == QDialog::Accepted) {
         updateProjectionMenu();
     }
 }
 
 void MainWindow::on_toolsFiltersAction_triggered()
 {
-    FilterPreferencesDialog* prefDlg = new FilterPreferencesDialog();
-    prefDlg->exec();
+    FilterPreferencesDialog prefDlg;
+    prefDlg.exec();
 //    if (prefDlg->exec() == QDialog::Accepted) {
 //        updateFilterMenu();
 //    }
@@ -3129,14 +3124,14 @@ void MainWindow::on_toolsShortcutsAction_triggered()
 
 void MainWindow::toolsPreferencesAction_triggered(bool focusData)
 {
-    PreferencesDialog* Pref = new PreferencesDialog(this);
+    PreferencesDialog dialog(this);
     if (focusData)
-        Pref->tabPref->setCurrentWidget(Pref->tabData);
+        dialog.tabPref->setCurrentWidget(dialog.tabData);
     else
-        Pref->tabPref->setCurrentIndex(p->lastPrefTabIndex);
-    connect (Pref, SIGNAL(preferencesChanged(PreferencesDialog*)), this, SLOT(preferencesChanged(PreferencesDialog*)));
-    Pref->exec();
-    p->lastPrefTabIndex = Pref->tabPref->currentIndex();
+        dialog.tabPref->setCurrentIndex(p->lastPrefTabIndex);
+    connect (&dialog, SIGNAL(preferencesChanged(PreferencesDialog*)), this, SLOT(preferencesChanged(PreferencesDialog*)));
+    dialog.exec();
+    p->lastPrefTabIndex = dialog.tabPref->currentIndex();
 }
 
 void MainWindow::preferencesChanged(PreferencesDialog* prefs)
@@ -3583,12 +3578,12 @@ bool MainWindow::selectExportedFeatures(QList<Feature*>& theFeatures)
 
 void MainWindow::on_editSelectAction_triggered()
 {
-    SelectionDialog* Sel = new SelectionDialog(this);
+    SelectionDialog selectionDialog(this);
 
-    if (Sel->exec() == QDialog::Accepted) {
+    if (selectionDialog.exec() == QDialog::Accepted) {
         QString out;
         int idx = 0;
-        QString in = Sel->edTagQuery->text();
+        QString in = selectionDialog.edTagQuery->text();
         QList<TagSelector*> terms;
         while (idx < in.length()) {
             TagSelector* t = TagSelector::parse(in, idx);
@@ -3612,7 +3607,7 @@ void MainWindow::on_editSelectAction_triggered()
             return;
         qDebug() << tsel->asExpression(false);
 
-        int selMaxResult = Sel->sbMaxResult->value();
+        int selMaxResult = selectionDialog.sbMaxResult->value();
 
         QList <Feature *> selection;
         int added = 0;
